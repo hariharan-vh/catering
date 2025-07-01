@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catering Reservation & Ordering System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            /* Background image for the entire body, primarily for the login page */
+            background-image: url('https://placehold.co/1920x1080/6a0dad/ffffff?text=Catering+System+Background'); /* A purple-themed placeholder */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* Ensures background stays fixed during scroll */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Overlay for better text readability on top of background image */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4); /* Dark overlay */
+            z-index: -1; /* Place behind content but above background image */
+        }
+
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Page specific styling for transitions */
+        .page-content {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .page-content.hidden {
+            opacity: 0;
+            pointer-events: none; /* Prevents interaction when hidden */
+            position: absolute; /* Takes it out of flow when hidden */
+            width: 100%; /* Maintain layout consistency */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[2000] hidden">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
+            <p class="text-white mt-4 text-lg">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app" class="flex flex-col flex-grow relative">
+
+        <!-- Top Navigation Bar (Always visible) -->
+        <nav class="bg-gradient-to-r from-purple-600 to-indigo-700 p-4 shadow-lg z-10">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-white text-2xl font-bold rounded-md p-2">Catering System</h1>
+                <div id="nav-links" class="flex space-x-4">
+                    <button id="logoutButton" class="bg-white text-purple-600 px-4 py-2 rounded-md shadow hover:bg-gray-100 transition-colors hidden">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Current User ID Display (for multi-user testing) -->
+        <div id="userIdDisplay" class="bg-gray-800 text-white text-center py-2 text-sm z-10 hidden">
+            <span class="font-semibold">User ID:</span> <span id="currentUserId"></span>
+        </div>
+
+        <!-- Page Container -->
+        <div id="pageContainer" class="flex-grow relative">
+
+            <!-- Authentication Page (Login/Register) -->
+            <section id="authPage" class="page-content flex flex-grow items-center justify-center p-4">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md bg-opacity-95 backdrop-filter backdrop-blur-sm">
+                    <h2 class="text-4xl font-extrabold text-center mb-6 text-purple-800 drop-shadow-md">Welcome!</h2>
+                    <p class="text-center text-gray-600 mb-8">Sign in or register to manage your catering needs.</p>
+
+                    <div class="flex justify-center mb-6 rounded-md overflow-hidden shadow-inner">
+                        <button id="showLogin" class="flex-1 px-6 py-3 text-lg font-bold transition-all duration-300 ease-in-out bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50">Login</button>
+                        <button id="showRegister" class="flex-1 px-6 py-3 text-lg font-bold transition-all duration-300 ease-in-out bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50">Register</button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="loginForm" class="space-y-4">
+                        <div>
+                            <label for="loginEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="loginEmail" placeholder="your.email@example.com" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                        </div>
+                        <div>
+                            <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="loginPassword" placeholder="********" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-md font-bold text-lg hover:bg-purple-700 transition-colors shadow-lg transform hover:scale-105">Login</button>
+                        <p id="loginMessage" class="text-red-500 text-center text-sm mt-2"></p>
+                    </form>
+
+                    <!-- Register Form -->
+                    <form id="registerForm" class="space-y-4 hidden">
+                        <div>
+                            <label for="registerEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="registerEmail" placeholder="your.email@example.com" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                        </div>
+                        <div>
+                            <label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="registerPassword" placeholder="********" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                        </div>
+                        <div>
+                            <label for="registerRole" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                            <select id="registerRole" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-md font-bold text-lg hover:bg-purple-700 transition-colors shadow-lg transform hover:scale-105">Register</button>
+                        <p id="registerMessage" class="text-red-500 text-center text-sm mt-2"></p>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Admin Dashboard Page -->
+            <section id="adminDashboardPage" class="page-content flex-grow p-6 bg-gray-100 hidden">
+                <div class="container mx-auto">
+                    <h2 class="text-4xl font-bold text-purple-800 mb-8 text-center">Admin Dashboard</h2>
+
+                    <!-- Admin Tabs -->
+                    <div class="flex justify-center mb-8 bg-white rounded-lg shadow-md p-2">
+                        <button id="adminTabProducts" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none mr-2 bg-purple-600 text-white">Manage Products</button>
+                        <button id="adminTabOrders" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100">View All Orders</button>
+                        <button id="adminTabReservations" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100">View Reservations</button>
+                    </div>
+
+                    <!-- Product Management -->
+                    <div id="adminProductsContent" class="bg-white p-8 rounded-lg shadow-xl mb-8">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">Upload New Product</h3>
+                        <form id="productUploadForm" class="space-y-4">
+                            <div>
+                                <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                                <input type="text" id="productName" placeholder="Delicious Cake" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                            </div>
+                            <div>
+                                <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea id="productDescription" rows="3" placeholder="A delightful cake for any occasion." class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required></textarea>
+                            </div>
+                            <div>
+                                <label for="productPrice" class="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                                <input type="number" id="productPrice" step="0.01" placeholder="25.99" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                            </div>
+                            <div>
+                                <label for="productImageUrl" class="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                                <input type="url" id="productImageUrl" placeholder="https://placehold.co/400x300/a855f7/ffffff?text=Product" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-md font-bold text-lg hover:bg-purple-700 transition-colors shadow-lg">Upload Product</button>
+                            <p id="productUploadMessage" class="text-green-600 text-center text-sm mt-2"></p>
+                        </form>
+
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 mt-12 text-center">Existing Products</h3>
+                        <div id="productListAdmin" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Products will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- All Orders List -->
+                    <div id="adminOrdersContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">All Customer Orders</h3>
+                        <div id="allOrdersList" class="space-y-6">
+                            <!-- All orders will be loaded here -->
+                            <p class="text-center text-gray-500" id="noAllOrdersMessage">No orders placed yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- All Reservations List (Admin) -->
+                    <div id="adminReservationsContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">All Customer Reservations</h3>
+                        <div id="allReservationsList" class="space-y-6">
+                            <!-- All reservations will be loaded here -->
+                            <p class="text-center text-gray-500" id="noAllReservationsMessage">No reservations made yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Dashboard Page -->
+            <section id="userDashboardPage" class="page-content flex-grow p-6 bg-gray-100 hidden">
+                <div class="container mx-auto">
+                    <h2 class="text-4xl font-bold text-purple-800 mb-8 text-center">User Dashboard</h2>
+
+                    <!-- User Tabs -->
+                    <div class="flex justify-center mb-8 bg-white rounded-lg shadow-md p-2">
+                        <button id="userTabProducts" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none mr-2 bg-purple-600 text-white">Browse Products</button>
+                        <button id="userTabCart" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100">My Cart (<span id="cartItemCount">0</span>)</button>
+                        <button id="userTabOrders" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100 mr-2">My Orders</button>
+                        <button id="userTabReservations" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100 mr-2">Make a Reservation</button>
+                        <button id="userTabProfile" class="px-6 py-3 text-lg font-semibold rounded-lg focus:outline-none text-gray-700 hover:bg-gray-100">My Profile</button>
+                    </div>
+
+                    <!-- Browse Products Content -->
+                    <div id="userProductsContent" class="bg-white p-8 rounded-lg shadow-xl">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">Available Catering Items</h3>
+                        <div id="productListUser" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Products will be loaded here for users -->
+                            <p class="text-center text-gray-500 col-span-full" id="noProductsMessage">No products available yet. Check back later!</p>
+                        </div>
+                    </div>
+
+                    <!-- My Cart Content -->
+                    <div id="userCartContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">Your Cart</h3>
+                        <div id="cartItemsList" class="space-y-4">
+                            <!-- Cart items will be loaded here -->
+                            <p class="text-center text-gray-500" id="emptyCartMessage">Your cart is empty. Start adding some delicious items!</p>
+                        </div>
+                        <div id="cartSummary" class="mt-8 pt-4 border-t border-gray-200 flex justify-between items-center hidden">
+                            <span class="text-xl font-bold text-gray-800">Total: $<span id="cartTotal">0.00</span></span>
+                            <button id="placeOrderButton" class="bg-green-600 text-white px-6 py-3 rounded-md font-bold text-lg hover:bg-green-700 transition-colors shadow-lg">Place Order</button>
+                        </div>
+                    </div>
+
+                    <!-- My Orders Content -->
+                    <div id="userOrdersContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">My Orders</h3>
+                        <div id="myOrdersList" class="space-y-6">
+                            <!-- User's orders will be loaded here -->
+                            <p class="text-center text-gray-500" id="noUserOrdersMessage">You haven't placed any orders yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- User Reservations Content -->
+                    <div id="userReservationsContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">Make a Catering Reservation</h3>
+                        <form id="reservationForm" class="space-y-4">
+                            <div>
+                                <label for="reservationDate" class="block text-sm font-medium text-gray-700 mb-1">Preferred Date</label>
+                                <input type="date" id="reservationDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                            </div>
+                            <div>
+                                <label for="reservationTime" class="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label>
+                                <input type="time" id="reservationTime" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                            </div>
+                            <div>
+                                <label for="numberOfGuests" class="block text-sm font-medium text-gray-700 mb-1">Number of Guests</label>
+                                <input type="number" id="numberOfGuests" min="1" placeholder="e.g., 50" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" required>
+                            </div>
+                            <div>
+                                <label for="specialRequests" class="block text-sm font-medium text-gray-700 mb-1">Special Requests / Notes</label>
+                                <textarea id="specialRequests" rows="3" placeholder="e.g., Dietary restrictions, theme, specific menu items..." class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-md font-bold text-lg hover:bg-purple-700 transition-colors shadow-lg">Submit Reservation Request</button>
+                            <p id="reservationMessage" class="text-green-600 text-center text-sm mt-2"></p>
+                        </form>
+
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 mt-12 text-center">My Reservations</h3>
+                        <div id="myReservationsList" class="space-y-6">
+                            <!-- User's reservations will be loaded here -->
+                            <p class="text-center text-gray-500" id="noUserReservationsMessage">You haven't made any reservations yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- My Profile Content -->
+                    <div id="userProfileContent" class="bg-white p-8 rounded-lg shadow-xl hidden">
+                        <h3 class="text-3xl font-bold text-purple-700 mb-6 text-center">My Profile</h3>
+                        <form id="profileUpdateForm" class="space-y-4">
+                            <div>
+                                <label for="profileEmail" class="block text-sm font-medium text-gray-700 mb-1">Email (Read-only)</label>
+                                <input type="email" id="profileEmail" class="w-full p-3 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" readonly>
+                            </div>
+                            <div>
+                                <label for="profileName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" id="profileName" placeholder="Your Name" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            </div>
+                            <div>
+                                <label for="profileAddress" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <textarea id="profileAddress" rows="3" placeholder="123 Catering St, Food City" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-md font-bold text-lg hover:bg-purple-700 transition-colors shadow-lg">Update Profile</button>
+                            <p id="profileUpdateMessage" class="text-green-600 text-center text-sm mt-2"></p>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+        <!-- Custom Message Modal -->
+        <div id="messageModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-button" id="closeMessageModal">&times;</span>
+                <p id="modalMessage" class="text-lg text-center mt-4"></p>
+                <div class="flex justify-center mt-6">
+                     <button id="modalOkButton" class="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors shadow-md">OK</button>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- End of #app container -->
+
+    <script type="module">
+        // Global variables for in-memory data (will be loaded/saved from localStorage)
+        let allUsers = {}; // Stores { userId: { id, email, password, role, name, address, createdAt, updatedAt } }
+        let allProducts = []; // Stores products data: [ { id, name, description, price, imageUrl, createdAt } ]
+        let allCarts = {}; // Stores { userId: { productId: { productId, name, price, quantity, addedAt, updatedAt } } }
+        let allOrders = []; // Stores orders data: [ { id, userId, customerName, deliveryAddress, items, totalAmount, orderDate, status } ]
+        let allReservations = []; // Stores reservation data: [ { id, userId, customerName, date, time, guests, requests, status, createdAt } ]
+
+        // Constants for localStorage keys (using __app_id for uniqueness)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const LS_USERS_KEY = `${appId}_users`;
+        const LS_PRODUCTS_KEY = `${appId}_products`;
+        const LS_CARTS_KEY = `${appId}_carts`;
+        const LS_ORDERS_KEY = `${appId}_orders`;
+        const LS_RESERVATIONS_KEY = `${appId}_reservations`; // New key for reservations
+        const LS_CURRENT_USER_KEY = `${appId}_currentUser`; // To remember logged-in user
+
+        let currentUserId = null;
+        let currentUserRole = null;
+
+        // UI Elements
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const authPage = document.getElementById('authPage');
+        const adminDashboardPage = document.getElementById('adminDashboardPage');
+        const userDashboardPage = document.getElementById('userDashboardPage');
+
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const showLoginButton = document.getElementById('showLogin');
+        const showRegisterButton = document.getElementById('showRegister');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginMessage = document.getElementById('loginMessage');
+        const registerEmail = document.getElementById('registerEmail');
+        const registerPassword = document.getElementById('registerPassword');
+        const registerRole = document.getElementById('registerRole');
+        const registerMessage = document.getElementById('registerMessage');
+        const logoutButton = document.getElementById('logoutButton');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const currentUserIdSpan = document.getElementById('currentUserId');
+        const navLinks = document.getElementById('nav-links');
+
+        // Admin Elements
+        const adminTabProducts = document.getElementById('adminTabProducts');
+        const adminTabOrders = document.getElementById('adminTabOrders');
+        const adminTabReservations = document.getElementById('adminTabReservations'); // New admin tab
+        const adminProductsContent = document.getElementById('adminProductsContent');
+        const adminOrdersContent = document.getElementById('adminOrdersContent');
+        const adminReservationsContent = document.getElementById('adminReservationsContent'); // New admin content area
+        const productUploadForm = document.getElementById('productUploadForm');
+        const productNameInput = document.getElementById('productName');
+        const productDescriptionInput = document.getElementById('productDescription');
+        const productPriceInput = document.getElementById('productPrice');
+        const productImageUrlInput = document.getElementById('productImageUrl');
+        const productUploadMessage = document.getElementById('productUploadMessage');
+        const productListAdmin = document.getElementById('productListAdmin');
+        const allOrdersList = document.getElementById('allOrdersList');
+        const noAllOrdersMessage = document.getElementById('noAllOrdersMessage');
+        const allReservationsList = document.getElementById('allReservationsList'); // For admin
+        const noAllReservationsMessage = document.getElementById('noAllReservationsMessage'); // For admin
+
+        // User Elements
+        const userTabProducts = document.getElementById('userTabProducts');
+        const userTabCart = document.getElementById('userTabCart');
+        const userTabOrders = document.getElementById('userTabOrders');
+        const userTabReservations = document.getElementById('userTabReservations'); // New user tab
+        const userTabProfile = document.getElementById('userTabProfile');
+        const userProductsContent = document.getElementById('userProductsContent');
+        const userCartContent = document.getElementById('userCartContent');
+        const userOrdersContent = document.getElementById('userOrdersContent');
+        const userReservationsContent = document.getElementById('userReservationsContent'); // New user content area
+        const userProfileContent = document.getElementById('userProfileContent');
+        const productListUser = document.getElementById('productListUser');
+        const noProductsMessage = document.getElementById('noProductsMessage');
+        const cartItemsList = document.getElementById('cartItemsList');
+        const emptyCartMessage = document.getElementById('emptyCartMessage');
+        const cartSummary = document.getElementById('cartSummary');
+        const cartItemCount = document.getElementById('cartItemCount');
+        const cartTotalSpan = document.getElementById('cartTotal');
+        const placeOrderButton = document.getElementById('placeOrderButton');
+        const myOrdersList = document.getElementById('myOrdersList');
+        const noUserOrdersMessage = document.getElementById('noUserOrdersMessage');
+        const profileUpdateForm = document.getElementById('profileUpdateForm');
+        const profileEmailInput = document.getElementById('profileEmail');
+        const profileNameInput = document.getElementById('profileName');
+        const profileAddressInput = document.getElementById('profileAddress');
+        const profileUpdateMessage = document.getElementById('profileUpdateMessage');
+
+        // Reservation Form Elements
+        const reservationForm = document.getElementById('reservationForm');
+        const reservationDateInput = document.getElementById('reservationDate');
+        const reservationTimeInput = document.getElementById('reservationTime');
+        const numberOfGuestsInput = document.getElementById('numberOfGuests');
+        const specialRequestsInput = document.getElementById('specialRequests');
+        const reservationMessage = document.getElementById('reservationMessage');
+        const myReservationsList = document.getElementById('myReservationsList'); // For user
+        const noUserReservationsMessage = document.getElementById('noUserReservationsMessage'); // For user
+
+
+        // Message Modal Elements
+        const messageModal = document.getElementById('messageModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const closeMessageModal = document.getElementById('closeMessageModal');
+        const modalOkButton = document.getElementById('modalOkButton');
+
+        /**
+         * Shows a custom modal message to the user.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error' for styling, optional.
+         */
+        function showMessage(message, type = '') {
+            modalMessage.textContent = message;
+            modalMessage.className = `text-lg text-center mt-4 ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-gray-800'}`;
+            messageModal.style.display = 'flex';
+        }
+
+        /**
+         * Hides the custom modal message.
+         */
+        function hideMessage() {
+            messageModal.style.display = 'none'; // Corrected from modalModal
+        }
+
+        closeMessageModal.onclick = hideMessage;
+        modalOkButton.onclick = hideMessage;
+
+        window.onclick = function(event) {
+            if (event.target == messageModal) {
+                hideMessage();
+            }
+        };
+
+        /**
+         * Shows the loading overlay.
+         */
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        /**
+         * Hides the loading overlay.
+         */
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        /**
+         * Navigates to a specific page by showing it and hiding others.
+         * @param {HTMLElement} pageToShow - The page element to display.
+         */
+        function navigateToPage(pageToShow) {
+            const allPages = [authPage, adminDashboardPage, userDashboardPage];
+            allPages.forEach(page => {
+                if (page === pageToShow) {
+                    page.classList.remove('hidden');
+                    page.style.opacity = '1';
+                    page.style.position = 'relative'; /* Bring it back into normal flow */
+                } else {
+                    page.style.opacity = '0';
+                    setTimeout(() => {
+                        page.classList.add('hidden');
+                        page.style.position = 'absolute'; /* Take it out of flow */
+                    }, 500); /* Match CSS transition duration */
+                }
+            });
+        }
+
+        /**
+         * Loads all application data from localStorage.
+         */
+        function loadData() {
+            try {
+                // Parse stored JSON or default to empty objects/arrays
+                allUsers = JSON.parse(localStorage.getItem(LS_USERS_KEY)) || {};
+                allProducts = JSON.parse(localStorage.getItem(LS_PRODUCTS_KEY)) || [];
+                allCarts = JSON.parse(localStorage.getItem(LS_CARTS_KEY)) || {};
+                allOrders = JSON.parse(localStorage.getItem(LS_ORDERS_KEY)) || [];
+                allReservations = JSON.parse(localStorage.getItem(LS_RESERVATIONS_KEY)) || []; // Load reservations
+
+                // Attempt to restore current user session
+                const storedUser = JSON.parse(localStorage.getItem(LS_CURRENT_USER_KEY));
+                if (storedUser && allUsers[storedUser.id] && allUsers[storedUser.id].role === storedUser.role) {
+                    currentUserId = storedUser.id;
+                    currentUserRole = storedUser.role;
+                    console.log("Restored session for User ID:", currentUserId, "Role:", currentUserRole);
+                } else {
+                    currentUserId = null;
+                    currentUserRole = null;
+                    console.log("No active user session found or session corrupted.");
+                }
+            } catch (e) {
+                console.error("Error loading data from localStorage:", e);
+                // In case of corrupted localStorage, clear it
+                clearAllLocalData();
+                showMessage("Local storage data corrupted. Application data has been reset.", 'error');
+            }
+        }
+
+        /**
+         * Saves all application data to localStorage.
+         */
+        function saveData() {
+            localStorage.setItem(LS_USERS_KEY, JSON.stringify(allUsers));
+            localStorage.setItem(LS_PRODUCTS_KEY, JSON.stringify(allProducts));
+            localStorage.setItem(LS_CARTS_KEY, JSON.stringify(allCarts));
+            localStorage.setItem(LS_ORDERS_KEY, JSON.stringify(allOrders));
+            localStorage.setItem(LS_RESERVATIONS_KEY, JSON.stringify(allReservations)); // Save reservations
+            if (currentUserId && currentUserRole) {
+                localStorage.setItem(LS_CURRENT_USER_KEY, JSON.stringify({ id: currentUserId, role: currentUserRole }));
+            } else {
+                localStorage.removeItem(LS_CURRENT_USER_KEY);
+            }
+        }
+
+        /**
+         * Clears all application-specific data from localStorage.
+         */
+        function clearAllLocalData() {
+            localStorage.removeItem(LS_USERS_KEY);
+            localStorage.removeItem(LS_PRODUCTS_KEY);
+            localStorage.removeItem(LS_CARTS_KEY);
+            localStorage.removeItem(LS_ORDERS_KEY);
+            localStorage.removeItem(LS_RESERVATIONS_KEY); // Clear reservations
+            localStorage.removeItem(LS_CURRENT_USER_KEY);
+            allUsers = {};
+            allProducts = [];
+            allCarts = {};
+            allOrders = [];
+            allReservations = []; // Reset in-memory
+            currentUserId = null;
+            currentUserRole = null;
+            console.log("All application data cleared from localStorage.");
+        }
+
+        /**
+         * Simulates Firebase's onAuthStateChanged by triggering UI update.
+         */
+        function simulateAuthStateChange() {
+            updateUI();
+        }
+
+        /**
+         * Updates the UI based on the current authentication state and user role.
+         */
+        function updateUI() {
+            // Reset nav links (important for logout) and re-attach listener
+            navLinks.innerHTML = `<button id="logoutButton" class="bg-white text-purple-600 px-4 py-2 rounded-md shadow hover:bg-gray-100 transition-colors hidden">Logout</button>`;
+            const currentLogoutButton = document.getElementById('logoutButton');
+            if (currentLogoutButton) {
+                currentLogoutButton.addEventListener('click', handleLogout);
+            }
+
+            userIdDisplay.classList.add('hidden'); // Hide user ID by default
+
+            if (currentUserId) { // Check if a user is "logged in" via localStorage
+                currentUserIdSpan.textContent = currentUserId;
+                userIdDisplay.classList.remove('hidden'); // Show user ID for debugging/multi-user context
+                currentLogoutButton.classList.remove('hidden'); // Show logout button
+
+                // Ensure currentUserRole is correctly set from allUsers
+                if (allUsers[currentUserId]) {
+                    currentUserRole = allUsers[currentUserId].role;
+                    console.log("User ID:", currentUserId, "Role:", currentUserRole);
+                } else {
+                    console.error("Logged in user ID found in localStorage, but user data not in allUsers. Forcing logout.");
+                    handleLogout(); // Force logout to clear inconsistent state
+                    return;
+                }
+                renderAppContent();
+            } else {
+                navigateToPage(authPage); // Show login page if not authenticated
+            }
+            hideLoading(); // Always hide loading after UI update attempt
+        }
+
+        /**
+         * Renders the appropriate dashboard based on the user's role.
+         */
+        function renderAppContent() {
+            if (currentUserRole === 'admin') {
+                navigateToPage(adminDashboardPage);
+                activateAdminTab('products'); // Default to products tab
+            } else if (currentUserRole === 'user') {
+                navigateToPage(userDashboardPage);
+                activateUserTab('products'); // Default to products tab
+            } else {
+                // Should ideally not happen if updateUI logic is sound, but as a fallback
+                navigateToPage(authPage);
+            }
+        }
+
+        // --- Authentication Functions (Local Storage based) ---
+
+        /**
+         * Generates a simple unique ID. Not cryptographically secure, but sufficient for local demo.
+         */
+        function generateUniqueId() {
+            return 'local-id-' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        }
+
+        /**
+         * Handles user login.
+         * @param {Event} e - The form submission event.
+         */
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value;
+            loginMessage.textContent = ''; // Clear previous messages
+
+            const foundUser = Object.values(allUsers).find(user => user.email === email && user.password === password);
+
+            if (foundUser) {
+                currentUserId = foundUser.id;
+                currentUserRole = foundUser.role;
+                saveData(); // Save current user session
+                simulateAuthStateChange(); // Trigger UI update
+                console.log("User logged in successfully!");
+            } else {
+                loginMessage.textContent = "Login failed. Invalid email or password.";
+            }
+            hideLoading();
+        });
+
+        /**
+         * Handles user registration.
+         * @param {Event} e - The form submission event.
+         */
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            const email = registerEmail.value.trim();
+            const password = registerPassword.value;
+            const role = registerRole.value;
+            registerMessage.textContent = ''; // Clear previous messages
+
+            if (!email || !password) {
+                registerMessage.textContent = "Email and password cannot be empty.";
+                registerMessage.classList.add('text-red-500');
+                hideLoading();
+                return;
+            }
+
+            if (Object.values(allUsers).some(user => user.email === email)) {
+                registerMessage.textContent = "This email is already in use. Please try logging in or use a different email.";
+                registerMessage.classList.remove('text-green-600');
+                registerMessage.classList.add('text-red-500');
+                hideLoading();
+                return;
+            }
+
+            if (password.length < 6) {
+                registerMessage.textContent = "Password should be at least 6 characters long.";
+                registerMessage.classList.remove('text-green-600');
+                registerMessage.classList.add('text-red-500');
+                hideLoading();
+                return;
+            }
+
+            const newUserId = generateUniqueId();
+            allUsers[newUserId] = {
+                id: newUserId,
+                email: email,
+                password: password, // WARNING: Storing plain passwords for demo. Not secure for production!
+                role: role,
+                name: '', // Initial empty name
+                address: '', // Initial empty address
+                createdAt: new Date().toISOString()
+            };
+            saveData(); // Save new user
+
+            registerMessage.textContent = "Registration successful! You can now log in.";
+            registerMessage.classList.remove('text-red-500');
+            registerMessage.classList.add('text-green-600');
+
+            // Pre-fill login form and switch tab for user convenience
+            loginEmail.value = email;
+            loginPassword.value = password;
+            showLoginButton.click();
+            hideLoading();
+            console.log("User registered:", newUserId, "Role:", role);
+        });
+
+        /**
+         * Handles user logout.
+         */
+        async function handleLogout() {
+            showLoading();
+            currentUserId = null;
+            currentUserRole = null;
+            saveData(); // Clear current user session from localStorage
+            console.log("User logged out.");
+            // Clear form fields
+            loginEmail.value = '';
+            loginPassword.value = '';
+            registerEmail.value = '';
+            registerPassword.value = '';
+            registerMessage.textContent = '';
+            loginMessage.textContent = '';
+            navigateToPage(authPage); // Navigate back to login page
+            hideLoading();
+        }
+
+        // Attach logout listener
+        logoutButton.addEventListener('click', handleLogout);
+
+        // Toggle between login and register forms
+        showLoginButton.addEventListener('click', () => {
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            showLoginButton.classList.add('bg-purple-600', 'text-white');
+            showLoginButton.classList.remove('bg-gray-200', 'text-gray-800');
+            showRegisterButton.classList.remove('bg-purple-600', 'text-white');
+            showRegisterButton.classList.add('bg-gray-200', 'text-gray-800');
+            loginMessage.textContent = '';
+            registerMessage.textContent = '';
+        });
+
+        showRegisterButton.addEventListener('click', () => {
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            showRegisterButton.classList.add('bg-purple-600', 'text-white');
+            showRegisterButton.classList.remove('bg-gray-200', 'text-gray-800');
+            showLoginButton.classList.remove('bg-purple-600', 'text-white');
+            showLoginButton.classList.add('bg-gray-200', 'text-gray-800');
+            loginMessage.textContent = '';
+            registerMessage.textContent = '';
+        });
+
+        // Initial load and setup when the window loads
+        window.onload = () => {
+            loadData(); // Load data from localStorage
+            simulateAuthStateChange(); // Check if a user is already logged in and update UI
+        };
+
+
+        // --- Admin Functions (Local Storage based) ---
+
+        /**
+         * Switches the active admin tab.
+         * @param {string} tabName - 'products' or 'orders' or 'reservations'.
+         */
+        function activateAdminTab(tabName) {
+            // Reset button styles
+            adminTabProducts.classList.remove('bg-purple-600', 'text-white');
+            adminTabProducts.classList.add('bg-gray-200', 'text-gray-800');
+            adminTabOrders.classList.remove('bg-purple-600', 'text-white');
+            adminTabOrders.classList.add('bg-gray-200', 'text-gray-800');
+            adminTabReservations.classList.remove('bg-purple-600', 'text-white');
+            adminTabReservations.classList.add('bg-gray-200', 'text-gray-800');
+
+            // Hide all content
+            adminProductsContent.classList.add('hidden');
+            adminOrdersContent.classList.add('hidden');
+            adminReservationsContent.classList.add('hidden'); // Hide new content area
+
+            // Activate selected tab
+            if (tabName === 'products') {
+                adminTabProducts.classList.add('bg-purple-600', 'text-white');
+                adminTabProducts.classList.remove('bg-gray-200', 'text-gray-800');
+                adminProductsContent.classList.remove('hidden');
+                displayProductsAdmin(allProducts); // Display products from in-memory store
+            } else if (tabName === 'orders') {
+                adminTabOrders.classList.add('bg-purple-600', 'text-white');
+                adminTabOrders.classList.remove('bg-gray-200', 'text-gray-800');
+                adminOrdersContent.classList.remove('hidden');
+                displayAllOrders(allOrders); // Display orders from in-memory store
+            } else if (tabName === 'reservations') { // New tab activation
+                adminTabReservations.classList.add('bg-purple-600', 'text-white');
+                adminTabReservations.classList.remove('bg-gray-200', 'text-gray-800');
+                adminReservationsContent.classList.remove('hidden');
+                displayAllReservations(allReservations); // Display reservations from in-memory store
+            }
+        }
+
+        adminTabProducts.addEventListener('click', () => activateAdminTab('products'));
+        adminTabOrders.addEventListener('click', () => activateAdminTab('orders'));
+        adminTabReservations.addEventListener('click', () => activateAdminTab('reservations')); // New event listener
+
+        /**
+         * Handles product upload form submission.
+         * @param {Event} e - The form submission event.
+         */
+        productUploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (currentUserRole !== 'admin') {
+                showMessage("You are not authorized to upload products.", 'error');
+                return;
+            }
+            showLoading();
+            productUploadMessage.textContent = '';
+
+            const newProductId = generateUniqueId();
+            const productData = {
+                id: newProductId,
+                name: productNameInput.value.trim(),
+                description: productDescriptionInput.value.trim(),
+                price: parseFloat(productPriceInput.value),
+                imageUrl: productImageUrlInput.value.trim() || `https://placehold.co/400x300/a855f7/ffffff?text=${encodeURIComponent(productNameInput.value.trim() || 'Product')}`,
+                createdAt: new Date().toISOString()
+            };
+
+            // Basic validation
+            if (!productData.name || !productData.description || isNaN(productData.price) || productData.price <= 0) {
+                productUploadMessage.textContent = "Please fill in all product details correctly (name, description, and a positive price).";
+                productUploadMessage.classList.add('text-red-500');
+                hideLoading();
+                return;
+            }
+
+            try {
+                allProducts.push(productData);
+                saveData(); // Save updated products to localStorage
+                displayProductsAdmin(allProducts); // Refresh display
+
+                productUploadMessage.textContent = "Product uploaded successfully!";
+                productUploadMessage.classList.remove('text-red-500');
+                productUploadMessage.classList.add('text-green-600');
+                productUploadForm.reset();
+                console.log("Product uploaded:", productData.name);
+            } catch (error) {
+                console.error("Error uploading product:", error);
+                productUploadMessage.textContent = "Error uploading product: " + error.message;
+                productUploadMessage.classList.remove('text-green-600');
+                productUploadMessage.classList.add('text-red-500');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        /**
+         * Displays products in the admin panel.
+         * @param {Array<Object>} products - Array of product objects.
+         */
+        function displayProductsAdmin(products) {
+            productListAdmin.innerHTML = ''; // Clear existing products
+            if (products.length === 0) {
+                productListAdmin.innerHTML = `<p class="col-span-full text-center text-gray-500">No products uploaded yet.</p>`;
+                return;
+            }
+
+            products.forEach(product => {
+                const productCard = `
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-md flex flex-col">
+                        <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-40 object-cover rounded-md mb-4 border border-gray-200">
+                        <h4 class="text-xl font-semibold text-gray-800 mb-2">${product.name}</h4>
+                        <p class="text-gray-600 text-sm mb-3 flex-grow">${product.description}</p>
+                        <div class="flex justify-between items-center mt-auto pt-2 border-t border-gray-100">
+                            <span class="text-lg font-bold text-purple-700">$${product.price.toFixed(2)}</span>
+                            <button data-product-id="${product.id}" class="delete-product-button bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors shadow-sm">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+                productListAdmin.insertAdjacentHTML('beforeend', productCard);
+            });
+
+            // Add event listeners for delete buttons
+            document.querySelectorAll('.delete-product-button').forEach(button => {
+                button.addEventListener('click', deleteProduct);
+            });
+        }
+
+        /**
+         * Deletes a product from in-memory store and localStorage.
+         * @param {Event} e - The click event.
+         */
+        async function deleteProduct(e) {
+            if (currentUserRole !== 'admin') {
+                showMessage("You are not authorized to delete products.", 'error');
+                return;
+            }
+            const productId = e.currentTarget.dataset.productId;
+            if (!productId) {
+                console.error("No product ID found for deletion.");
+                showMessage("Error: Could not find product to delete.", 'error');
+                return;
+            }
+
+            showLoading();
+            try {
+                allProducts = allProducts.filter(p => p.id !== productId);
+                saveData(); // Save updated products to localStorage
+                displayProductsAdmin(allProducts); // Refresh display
+
+                showMessage("Product deleted successfully!", 'success');
+                console.log("Product deleted:", productId);
+            } catch (error) {
+                console.error("Error deleting product:", error);
+                showMessage("Error deleting product: " + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+
+        /**
+         * Displays all orders in the admin panel.
+         * @param {Array<Object>} orders - Array of order objects.
+         */
+        function displayAllOrders(orders) {
+            allOrdersList.innerHTML = ''; // Clear existing orders
+            if (orders.length === 0) {
+                noAllOrdersMessage.classList.remove('hidden');
+                return;
+            } else {
+                noAllOrdersMessage.classList.add('hidden');
+            }
+
+            // Sort orders by timestamp, newest first
+            orders.sort((a, b) => (new Date(b.orderDate).getTime()) - (new Date(a.orderDate).getTime()));
+
+            orders.forEach(order => {
+                const itemsHtml = order.items.map(item => `
+                    <li class="flex justify-between text-gray-700 text-sm">
+                        <span>${item.name} (x${item.quantity})</span>
+                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                    </li>
+                `).join('');
+
+                const orderCard = `
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-semibold text-purple-700">Order ID: ${order.id.substring(0, 8)}...</h4>
+                            <span class="text-gray-600 text-sm">User ID: ${order.userId.substring(0, 8)}...</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">Order Date: ${new Date(order.orderDate).toLocaleString()}</p>
+                        <p class="text-gray-600 text-sm mb-2">Customer Name: ${order.customerName || 'N/A'}</p>
+                        <p class="text-gray-600 text-sm mb-4">Delivery Address: ${order.deliveryAddress || 'N/A'}</p>
+                        <p class="font-medium text-gray-700 mb-2">Items:</p>
+                        <ul class="list-disc pl-5 space-y-1 mb-4 border-b border-gray-200 pb-3">
+                            ${itemsHtml}
+                        </ul>
+                        <div class="flex justify-between items-center mt-auto">
+                            <span class="text-lg font-bold text-green-700">Total: $${order.totalAmount.toFixed(2)}</span>
+                            <!-- Add actions like 'Mark as Complete' here if needed -->
+                        </div>
+                    </div>
+                `;
+                allOrdersList.insertAdjacentHTML('beforeend', orderCard);
+            });
+        }
+
+        /**
+         * Displays all reservations in the admin panel.
+         * @param {Array<Object>} reservations - Array of reservation objects.
+         */
+        function displayAllReservations(reservations) {
+            allReservationsList.innerHTML = ''; // Clear existing reservations
+            if (reservations.length === 0) {
+                noAllReservationsMessage.classList.remove('hidden');
+                return;
+            } else {
+                noAllReservationsMessage.classList.add('hidden');
+            }
+
+            // Sort reservations by date and time, newest first
+            reservations.sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time}`);
+                const dateB = new Date(`${b.date}T${b.time}`);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            reservations.forEach(reservation => {
+                const user = allUsers[reservation.userId];
+                const customerEmail = user ? user.email : 'Unknown';
+                const reservationCard = `
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-semibold text-purple-700">Reservation ID: ${reservation.id.substring(0, 8)}...</h4>
+                            <span class="text-gray-600 text-sm">User ID: ${reservation.userId.substring(0, 8)}...</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">Customer: ${reservation.customerName || 'N/A'} (${customerEmail})</p>
+                        <p class="text-gray-600 text-sm mb-2">Date: ${reservation.date} at ${reservation.time}</p>
+                        <p class="text-gray-600 text-sm mb-2">Guests: ${reservation.guests}</p>
+                        <p class="text-gray-600 text-sm mb-4">Requests: ${reservation.requests || 'None'}</p>
+                        <div class="flex justify-between items-center mt-auto">
+                            <span class="text-lg font-bold text-blue-600">Status: ${reservation.status}</span>
+                            <!-- Add actions like 'Mark as Confirmed/Canceled' here if needed -->
+                        </div>
+                    </div>
+                `;
+                allReservationsList.insertAdjacentHTML('beforeend', reservationCard);
+            });
+        }
+
+
+        // --- User Functions (Local Storage based) ---
+
+        /**
+         * Switches the active user tab.
+         * @param {string} tabName - 'products', 'cart', 'orders', 'reservations', or 'profile'.
+         */
+        function activateUserTab(tabName) {
+            // Reset button styles
+            userTabProducts.classList.remove('bg-purple-600', 'text-white');
+            userTabProducts.classList.add('bg-gray-200', 'text-gray-800');
+            userTabCart.classList.remove('bg-purple-600', 'text-white');
+            userTabCart.classList.add('bg-gray-200', 'text-gray-800');
+            userTabOrders.classList.remove('bg-purple-600', 'text-white');
+            userTabOrders.classList.add('bg-gray-200', 'text-gray-800');
+            userTabReservations.classList.remove('bg-purple-600', 'text-white'); // New tab reset
+            userTabReservations.classList.add('bg-gray-200', 'text-gray-800');
+            userTabProfile.classList.remove('bg-purple-600', 'text-white');
+            userTabProfile.classList.add('bg-gray-200', 'text-gray-800');
+
+            // Hide all content
+            userProductsContent.classList.add('hidden');
+            userCartContent.classList.add('hidden');
+            userOrdersContent.classList.add('hidden');
+            userReservationsContent.classList.add('hidden'); // Hide new content area
+            userProfileContent.classList.add('hidden');
+
+            // Activate selected tab
+            if (tabName === 'products') {
+                userTabProducts.classList.add('bg-purple-600', 'text-white');
+                userTabProducts.classList.remove('bg-gray-200', 'text-gray-800');
+                userProductsContent.classList.remove('hidden');
+                displayProductsUser(allProducts); // Display products from in-memory store
+            } else if (tabName === 'cart') {
+                userTabCart.classList.add('bg-purple-600', 'text-white');
+                userTabCart.classList.remove('bg-gray-200', 'text-gray-800');
+                userCartContent.classList.remove('hidden');
+                displayCartItems(Object.values(allCarts[currentUserId] || {})); // Display user's cart from in-memory store
+            } else if (tabName === 'orders') {
+                userTabOrders.classList.add('bg-purple-600', 'text-white');
+                userTabOrders.classList.remove('bg-gray-200', 'text-gray-800');
+                userOrdersContent.classList.remove('hidden');
+                const userSpecificOrders = allOrders.filter(order => order.userId === currentUserId);
+                displayUserOrders(userSpecificOrders); // Display user's orders from in-memory store
+            } else if (tabName === 'reservations') { // New tab activation
+                userTabReservations.classList.add('bg-purple-600', 'text-white');
+                userTabReservations.classList.remove('bg-gray-200', 'text-gray-800');
+                userReservationsContent.classList.remove('hidden');
+                const userSpecificReservations = allReservations.filter(res => res.userId === currentUserId);
+                displayUserReservations(userSpecificReservations); // Display user's reservations
+            }
+            else if (tabName === 'profile') {
+                userTabProfile.classList.add('bg-purple-600', 'text-white');
+                userTabProfile.classList.remove('bg-gray-200', 'text-gray-800');
+                userProfileContent.classList.remove('hidden');
+                // Populate profile fields
+                const userProfile = allUsers[currentUserId] || {};
+                profileEmailInput.value = userProfile.email || '';
+                profileNameInput.value = userProfile.name || '';
+                profileAddressInput.value = userProfile.address || '';
+            }
+        }
+
+        userTabProducts.addEventListener('click', () => activateUserTab('products'));
+        userTabCart.addEventListener('click', () => activateUserTab('cart'));
+        userTabOrders.addEventListener('click', () => activateUserTab('orders'));
+        userTabReservations.addEventListener('click', () => activateUserTab('reservations')); // New event listener
+        userTabProfile.addEventListener('click', () => activateUserTab('profile'));
+
+        /**
+         * Displays products in the user's product browsing section.
+         * @param {Array<Object>} products - Array of product objects.
+         */
+        function displayProductsUser(products) {
+            productListUser.innerHTML = ''; // Clear existing products
+            if (products.length === 0) {
+                noProductsMessage.classList.remove('hidden');
+                return;
+            } else {
+                noProductsMessage.classList.add('hidden');
+            }
+
+            products.forEach(product => {
+                const productCard = `
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-md flex flex-col">
+                        <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-40 object-cover rounded-md mb-4 border border-gray-200">
+                        <h4 class="text-xl font-semibold text-gray-800 mb-2">${product.name}</h4>
+                        <p class="text-gray-600 text-sm mb-3 flex-grow">${product.description}</p>
+                        <div class="flex justify-between items-center mt-auto pt-2 border-t border-gray-100">
+                            <span class="text-lg font-bold text-purple-700">$${product.price.toFixed(2)}</span>
+                            <button data-product-id="${product.id}"
+                                data-product-name="${product.name}"
+                                data-product-price="${product.price}"
+                                class="add-to-cart-button bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors shadow-sm">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                `;
+                productListUser.insertAdjacentHTML('beforeend', productCard);
+            });
+
+            document.querySelectorAll('.add-to-cart-button').forEach(button => {
+                button.addEventListener('click', addToCart);
+            });
+        }
+
+        /**
+         * Adds a product to the user's cart in localStorage.
+         * @param {Event} e - The click event.
+         */
+        async function addToCart(e) {
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("Please log in as a user to add items to your cart.", 'error');
+                return;
+            }
+            showLoading();
+            const productId = e.currentTarget.dataset.productId;
+            const productName = e.currentTarget.dataset.productName;
+            const productPrice = parseFloat(e.currentTarget.dataset.productPrice);
+
+            if (!productId || !productName || isNaN(productPrice)) {
+                console.error("Invalid product data for adding to cart.");
+                showMessage("Error: Could not add product to cart.", 'error');
+                hideLoading();
+                return;
+            }
+
+            if (!allCarts[currentUserId]) {
+                allCarts[currentUserId] = {};
+            }
+
+            if (allCarts[currentUserId][productId]) {
+                // Update quantity if item already in cart
+                allCarts[currentUserId][productId].quantity += 1;
+                allCarts[currentUserId][productId].updatedAt = new Date().toISOString();
+                showMessage(`${productName} quantity updated in cart!`, 'success');
+                console.log("Cart item updated:", productName);
+            } else {
+                // Add new item to cart
+                allCarts[currentUserId][productId] = {
+                    productId: productId,
+                    name: productName,
+                    price: productPrice,
+                    quantity: 1,
+                    addedAt: new Date().toISOString()
+                };
+                showMessage(`${productName} added to cart!`, 'success');
+                console.log("Product added to cart:", productName);
+            }
+            saveData(); // Save updated cart to localStorage
+            displayCartItems(Object.values(allCarts[currentUserId] || {})); // Refresh display
+            hideLoading();
+        }
+
+        /**
+         * Displays the user's cart items.
+         * @param {Array<Object>} cartItems - Array of cart item objects.
+         */
+        function displayCartItems(cartItems) {
+            cartItemsList.innerHTML = ''; // Clear existing items
+            let total = 0;
+            let itemCount = 0;
+
+            if (cartItems.length === 0) {
+                emptyCartMessage.classList.remove('hidden');
+                cartSummary.classList.add('hidden');
+            } else {
+                emptyCartMessage.classList.add('hidden');
+                cartSummary.classList.remove('hidden');
+                cartItems.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    total += itemTotal;
+                    itemCount += item.quantity;
+                    // Use item.productId as unique ID for update/remove buttons
+                    const cartItemHtml = `
+                        <div class="bg-gray-50 p-4 rounded-lg shadow-sm flex items-center justify-between">
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-800">${item.name}</h4>
+                                <p class="text-gray-600 text-sm">$${item.price.toFixed(2)} x ${item.quantity}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button data-item-id="${item.productId}" data-quantity="${item.quantity}" class="update-quantity-button bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300 transition-colors" data-action="decrease">-</button>
+                                <span class="font-medium">${item.quantity}</span>
+                                <button data-item-id="${item.productId}" data-quantity="${item.quantity}" class="update-quantity-button bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300 transition-colors" data-action="increase">+</button>
+                                <button data-item-id="${item.productId}" class="remove-from-cart-button bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    cartItemsList.insertAdjacentHTML('beforeend', cartItemHtml);
+                });
+            }
+
+            cartTotalSpan.textContent = total.toFixed(2);
+            cartItemCount.textContent = itemCount;
+
+            // Add event listeners for update and remove buttons
+            document.querySelectorAll('.update-quantity-button').forEach(button => {
+                button.addEventListener('click', updateCartItemQuantity);
+            });
+            document.querySelectorAll('.remove-from-cart-button').forEach(button => {
+                button.addEventListener('click', removeCartItem);
+            });
+        }
+
+        /**
+         * Updates the quantity of a cart item or removes it if quantity becomes zero.
+         * @param {Event} e - The click event.
+         */
+        async function updateCartItemQuantity(e) {
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("Please log in as a user to modify your cart.", 'error');
+                return;
+            }
+            showLoading();
+            const itemId = e.currentTarget.dataset.itemId;
+            const action = e.currentTarget.dataset.action;
+            let currentQuantity = parseInt(e.currentTarget.dataset.quantity);
+
+            if (!allCarts[currentUserId] || !allCarts[currentUserId][itemId]) {
+                console.error("Cart item not found for update:", itemId);
+                showMessage("Error: Cart item not found.", 'error');
+                hideLoading();
+                return;
+            }
+
+            try {
+                if (action === 'increase') {
+                    allCarts[currentUserId][itemId].quantity += 1;
+                    allCarts[currentUserId][itemId].updatedAt = new Date().toISOString();
+                } else if (action === 'decrease') {
+                    if (allCarts[currentUserId][itemId].quantity > 1) {
+                        allCarts[currentUserId][itemId].quantity -= 1;
+                        allCarts[currentUserId][itemId].updatedAt = new Date().toISOString();
+                    } else {
+                        // If quantity is 1 and decreased, remove the item
+                        delete allCarts[currentUserId][itemId];
+                        showMessage("Item removed from cart.", 'success');
+                    }
+                }
+                saveData(); // Save updated cart to localStorage
+                displayCartItems(Object.values(allCarts[currentUserId] || {})); // Refresh display
+                console.log("Cart item quantity updated for:", itemId);
+            } catch (error) {
+                console.error("Error updating cart item quantity:", error);
+                showMessage("Error updating cart item: " + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Removes a cart item from localStorage.
+         * @param {Event} e - The click event.
+         */
+        async function removeCartItem(e) {
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("Please log in as a user to modify your cart.", 'error');
+                return;
+            }
+            showLoading();
+            const itemId = e.currentTarget.dataset.itemId;
+
+            if (!allCarts[currentUserId] || !allCarts[currentUserId][itemId]) {
+                console.error("Cart item not found for removal:", itemId);
+                showMessage("Error: Cart item not found.", 'error');
+                hideLoading();
+                return;
+            }
+
+            try {
+                delete allCarts[currentUserId][itemId];
+                saveData(); // Save updated cart to localStorage
+                displayCartItems(Object.values(allCarts[currentUserId] || {})); // Refresh display
+
+                showMessage("Item removed from cart!", 'success');
+                console.log("Cart item removed:", itemId);
+            } catch (error) {
+                console.error("Error removing cart item:", error);
+                showMessage("Error removing item: " + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Handles placing an order from the cart.
+         */
+        placeOrderButton.addEventListener('click', async () => {
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("Please log in as a user to place an order.", 'error');
+                return;
+            }
+            showLoading();
+
+            try {
+                const cartItems = Object.values(allCarts[currentUserId] || {});
+
+                if (cartItems.length === 0) {
+                    showMessage("Your cart is empty. Please add items before placing an order.", 'error');
+                    hideLoading();
+                    return;
+                }
+
+                // Calculate total amount
+                const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                // Get user profile for order details
+                const userProfile = allUsers[currentUserId] || {};
+                const customerName = userProfile.name || 'Guest User';
+                const deliveryAddress = userProfile.address || 'Not specified';
+
+                const newOrderId = generateUniqueId();
+                // Create order object
+                const order = {
+                    id: newOrderId,
+                    userId: currentUserId,
+                    customerName: customerName,
+                    deliveryAddress: deliveryAddress,
+                    items: cartItems.map(item => ({
+                        productId: item.productId,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    })),
+                    totalAmount: totalAmount,
+                    orderDate: new Date().toISOString(),
+                    status: 'Pending' // Initial status
+                };
+
+                // Add order to public orders collection
+                allOrders.push(order);
+
+                // Clear the user's cart
+                allCarts[currentUserId] = {}; // Clear cart for the current user
+
+                saveData(); // Save all updated data to localStorage
+
+                showMessage("Order placed successfully! Your cart has been cleared.", 'success');
+                console.log("Order placed:", order);
+
+                // Switch to my orders tab after placing order
+                activateUserTab('orders');
+
+            } catch (error) {
+                console.error("Error placing order:", error);
+                showMessage("Error placing order: " + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        /**
+         * Displays the user's orders.
+         * @param {Array<Object>} orders - Array of order objects.
+         */
+        function displayUserOrders(orders) {
+            myOrdersList.innerHTML = ''; // Clear existing orders
+            if (orders.length === 0) {
+                noUserOrdersMessage.classList.remove('hidden');
+                return;
+            } else {
+                noUserOrdersMessage.classList.add('hidden');
+            }
+
+            // Sort orders by timestamp, newest first
+            orders.sort((a, b) => (new Date(b.orderDate).getTime()) - (new Date(a.orderDate).getTime()));
+
+            orders.forEach(order => {
+                const itemsHtml = order.items.map(item => `
+                    <li class="flex justify-between text-gray-700 text-sm">
+                        <span>${item.name} (x${item.quantity})</span>
+                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                    </li>
+                `).join('');
+
+                const orderCard = `
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-semibold text-purple-700">Order ID: ${order.id.substring(0, 8)}...</h4>
+                            <span class="text-gray-600 text-sm">Status: <span class="font-bold ${order.status === 'Pending' ? 'text-orange-500' : 'text-green-600'}">${order.status}</span></span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">Order Date: ${new Date(order.orderDate).toLocaleString()}</p>
+                        <p class="font-medium text-gray-700 mb-2">Items:</p>
+                        <ul class="list-disc pl-5 space-y-1 mb-4 border-b border-gray-200 pb-3">
+                            ${itemsHtml}
+                        </ul>
+                        <div class="flex justify-between items-center mt-auto">
+                            <span class="text-lg font-bold text-green-700">Total: $${order.totalAmount.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+                myOrdersList.insertAdjacentHTML('beforeend', orderCard);
+            });
+        }
+
+        /**
+         * Handles reservation form submission.
+         * @param {Event} e - The form submission event.
+         */
+        reservationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("Please log in as a user to make a reservation.", 'error');
+                return;
+            }
+            showLoading();
+            reservationMessage.textContent = '';
+
+            const reservationDate = reservationDateInput.value;
+            const reservationTime = reservationTimeInput.value;
+            const numberOfGuests = parseInt(numberOfGuestsInput.value);
+            const specialRequests = specialRequestsInput.value.trim();
+
+            // Basic validation
+            if (!reservationDate || !reservationTime || isNaN(numberOfGuests) || numberOfGuests <= 0) {
+                reservationMessage.textContent = "Please fill in valid date, time, and number of guests.";
+                reservationMessage.classList.add('text-red-500');
+                hideLoading();
+                return;
+            }
+
+            const userProfile = allUsers[currentUserId];
+            const customerName = userProfile ? userProfile.name || 'N/A' : 'N/A';
+
+            const newReservationId = generateUniqueId();
+            const reservationData = {
+                id: newReservationId,
+                userId: currentUserId,
+                customerName: customerName,
+                date: reservationDate,
+                time: reservationTime,
+                guests: numberOfGuests,
+                requests: specialRequests,
+                status: 'Pending', // Initial status
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                allReservations.push(reservationData);
+                saveData(); // Save updated reservations to localStorage
+                displayUserReservations(allReservations.filter(res => res.userId === currentUserId)); // Refresh user's reservations
+
+                reservationMessage.textContent = "Reservation request submitted successfully!";
+                reservationMessage.classList.remove('text-red-500');
+                reservationMessage.classList.add('text-green-600');
+                reservationForm.reset();
+                console.log("Reservation submitted:", reservationData);
+            } catch (error) {
+                console.error("Error submitting reservation:", error);
+                reservationMessage.textContent = "Error submitting reservation: " + error.message;
+                reservationMessage.classList.remove('text-green-600');
+                reservationMessage.classList.add('text-red-500');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        /**
+         * Displays the user's reservations.
+         * @param {Array<Object>} reservations - Array of reservation objects specific to the current user.
+         */
+        function displayUserReservations(reservations) {
+            myReservationsList.innerHTML = ''; // Clear existing reservations
+            if (reservations.length === 0) {
+                noUserReservationsMessage.classList.remove('hidden');
+                return;
+            } else {
+                noUserReservationsMessage.classList.add('hidden');
+            }
+
+            // Sort reservations by date and time, newest first
+            reservations.sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time}`);
+                const dateB = new Date(`${b.date}T${b.time}`);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            reservations.forEach(reservation => {
+                const reservationCard = `
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-semibold text-purple-700">Reservation for ${reservation.date} at ${reservation.time}</h4>
+                            <span class="text-gray-600 text-sm">Guests: ${reservation.guests}</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">Requests: ${reservation.requests || 'None'}</p>
+                        <div class="flex justify-between items-center mt-auto">
+                            <span class="text-lg font-bold text-blue-600">Status: ${reservation.status}</span>
+                            <!-- Add buttons to cancel/edit if needed -->
+                        </div>
+                    </div>
+                `;
+                myReservationsList.insertAdjacentHTML('beforeend', reservationCard);
+            });
+        }
+
+        /**
+         * Updates the user's profile information in localStorage.
+         * @param {Event} e - The form submission event.
+         */
+        profileUpdateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUserId || currentUserRole !== 'user') {
+                showMessage("You are not authorized to update your profile.", 'error');
+                return;
+            }
+            showLoading();
+            profileUpdateMessage.textContent = '';
+
+            if (allUsers[currentUserId]) {
+                allUsers[currentUserId].name = profileNameInput.value.trim();
+                allUsers[currentUserId].address = profileAddressInput.value.trim();
+                allUsers[currentUserId].updatedAt = new Date().toISOString();
+                saveData(); // Save updated profile to localStorage
+
+                profileUpdateMessage.textContent = "Profile updated successfully!";
+                profileUpdateMessage.classList.remove('text-red-500');
+                profileUpdateMessage.classList.add('text-green-600');
+                console.log("User profile updated for:", currentUserId);
+            } else {
+                profileUpdateMessage.textContent = "Error: User profile not found.";
+                profileUpdateMessage.classList.remove('text-green-600');
+                profileUpdateMessage.classList.add('text-red-500');
+                console.error("Error updating profile: User not found in allUsers", currentUserId);
+            }
+            hideLoading();
+        });
+
+    </script>
+</body>
+</html>
